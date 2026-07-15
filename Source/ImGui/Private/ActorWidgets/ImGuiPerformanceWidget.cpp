@@ -11,6 +11,7 @@
 #include <Hal/PlatformMisc.h>
 #include <Misc/App.h>
 #include <DynamicRHI.h>
+#include <Modules/ModuleManager.h>
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -116,7 +117,10 @@ namespace ImGuiPerformanceWidget
 			char GraphLabel[64];
 			snprintf(GraphLabel, sizeof(GraphLabel), "Avg: %.1fms, Peak: %.1fms", AvgTime, PeakTime);
 			ImGui::Text("Realtime Frame Time Graph:");
+			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.0f, 0.8f, 0.8f, 1.0f)); // Bright Cyan
+			ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(0.0f, 1.0f, 1.0f, 1.0f)); // Bright Cyan Hovered
 			ImGui::PlotLines("##FrameTimeGraph", FrameTimes, 100, FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(-FLT_MIN, 80));
+			ImGui::PopStyleColor(2);
 
 			ImGui::Spacing();
 
@@ -269,7 +273,17 @@ namespace ImGuiPerformanceWidget
 
 			ImGui::Text("Default Online Subsystem: %s", TCHAR_TO_UTF8(*DefaultSubName));
 
-			IOnlineSubsystem* SteamOSS = IOnlineSubsystem::Get(FName(TEXT("STEAM")));
+			static IOnlineSubsystem* SteamOSS = nullptr;
+			static bool bSteamOSSChecked = false;
+			if (!bSteamOSSChecked)
+			{
+				bSteamOSSChecked = true;
+				if (FModuleManager::Get().IsModuleLoaded(TEXT("OnlineSubsystemSteam")))
+				{
+					SteamOSS = IOnlineSubsystem::Get(FName(TEXT("STEAM")));
+				}
+			}
+
 			if (SteamOSS)
 			{
 				ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Steam OSS API: Active & Connected");
