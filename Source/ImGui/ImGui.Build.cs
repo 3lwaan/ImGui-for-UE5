@@ -70,6 +70,7 @@ public class ImGui : ModuleRules
 				"AdvancedRecording",
 				"AdvancedVoiceRecording",
 				"BatterySystem",
+				"AdvancedElevatorSystem",
 				"OnlineSubsystem",
 				"OnlineSubsystemUtils",
 				"RHI"

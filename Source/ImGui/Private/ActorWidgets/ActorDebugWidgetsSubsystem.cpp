@@ -4,6 +4,7 @@
 #include "ActorWidgets/ImGuiAudioMicrophoneWidget.h"
 #include "ActorWidgets/ImGuiBatteryWidget.h"
 #include "ActorWidgets/ImGuiPerformanceWidget.h"
+#include "ActorWidgets/ImGuiElevatorWidget.h"
 #include "ImGuiDelegates.h"
 
 #include <Engine/World.h>
@@ -48,6 +49,15 @@ static TAutoConsoleVariable<int32> CVarDebugPerformance(
 	TEXT("imgui.DebugPerformance"),
 	0,
 	TEXT("Toggle the ImGui debug window for Performance & Network Stats.\n")
+	TEXT("0: Disabled\n")
+	TEXT("1: Enabled"),
+	ECVF_Cheat
+);
+
+static TAutoConsoleVariable<int32> CVarDebugElevators(
+	TEXT("imgui.DebugElevators"),
+	0,
+	TEXT("Toggle the ImGui debug window for Elevators.\n")
 	TEXT("0: Disabled\n")
 	TEXT("1: Enabled"),
 	ECVF_Cheat
@@ -102,5 +112,10 @@ void UActorDebugWidgetsSubsystem::DrawDebugWidgets()
 	if (CVarDebugPerformance.GetValueOnGameThread() != 0)
 	{
 		ImGuiPerformanceWidget::Draw(World);
+	}
+
+	if (CVarDebugElevators.GetValueOnGameThread() != 0)
+	{
+		ImGuiElevatorWidget::Draw(World);
 	}
 }

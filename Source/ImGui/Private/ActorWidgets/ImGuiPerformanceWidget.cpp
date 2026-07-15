@@ -119,7 +119,7 @@ namespace ImGuiPerformanceWidget
 			ImGui::Text("Realtime Frame Time Graph:");
 			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.0f, 0.8f, 0.8f, 1.0f)); // Bright Cyan
 			ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(0.0f, 1.0f, 1.0f, 1.0f)); // Bright Cyan Hovered
-			ImGui::PlotLines("##FrameTimeGraph", FrameTimes, 100, FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(-FLT_MIN, 80));
+			ImGui::PlotLines("##FrameTimeGraph", FrameTimes, 100, FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(0.0f, 80.0f));
 			ImGui::PopStyleColor(2);
 
 			ImGui::Spacing();
