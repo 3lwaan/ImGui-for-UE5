@@ -15,6 +15,7 @@
 #include <GameFramework/PlayerController.h>
 #include <Engine/DebugCameraController.h>
 #include <Engine/Player.h>
+#include <GameFramework/SpectatorPawn.h>
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -192,15 +193,15 @@ namespace ImGuiPerformanceWidget
 						case 7:  PC->ConsoleCommand(TEXT("viewmode stationarylightoverlap")); break;
 						case 8:  PC->ConsoleCommand(TEXT("viewmode quadoverdraw")); break;
 						case 9:  PC->ConsoleCommand(TEXT("viewmode lodcoloration")); break;
-						case 10: PC->ConsoleCommand(TEXT("viewmode basecolor")); break;
-						case 11: PC->ConsoleCommand(TEXT("viewmode roughness")); break;
-						case 12: PC->ConsoleCommand(TEXT("viewmode normal")); break;
-						case 13: PC->ConsoleCommand(TEXT("viewmode specular")); break;
-						case 14: PC->ConsoleCommand(TEXT("viewmode metallic")); break;
-						case 15: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Overview")); break;
-						case 16: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Geometry")); break;
-						case 17: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Reflections")); break;
-						case 18: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Card")); break;
+						case 10: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget BaseColor")); break;
+						case 11: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Roughness")); break;
+						case 12: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget WorldNormal")); break;
+						case 13: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Specular")); break;
+						case 14: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Metallic")); break;
+						case 15: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 1")); break;
+						case 16: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 3")); break;
+						case 17: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 4")); break;
+						case 18: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 12")); break;
 					}
 				}
 			}
@@ -210,7 +211,7 @@ namespace ImGuiPerformanceWidget
 			for (TObjectIterator<ADebugCameraController> It; It; ++It)
 			{
 				ADebugCameraController* DCC = *It;
-				if (IsValid(DCC) && DCC->GetWorld() == World && !DCC->IsTemplate())
+				if (IsValid(DCC) && DCC->GetWorld() == World && !DCC->IsTemplate() && DCC->Player != nullptr)
 				{
 					bNoclipActive = true;
 					break;
@@ -229,7 +230,7 @@ namespace ImGuiPerformanceWidget
 					for (TObjectIterator<ADebugCameraController> It; It; ++It)
 					{
 						ADebugCameraController* FoundDCC = *It;
-						if (IsValid(FoundDCC) && FoundDCC->GetWorld() == World && !FoundDCC->IsTemplate())
+						if (IsValid(FoundDCC) && FoundDCC->GetWorld() == World && !FoundDCC->IsTemplate() && FoundDCC->Player != nullptr)
 						{
 							DCC = FoundDCC;
 							break;
@@ -254,6 +255,38 @@ namespace ImGuiPerformanceWidget
 					if (PC)
 					{
 						PC->ConsoleCommand(TEXT("ToggleDebugCamera"));
+					}
+				}
+				ImGui::PopStyleColor(2);
+			}
+
+			// Freeze Rendering
+			static bool bIsRenderingFrozen = false;
+			ImGui::Spacing();
+			if (bIsRenderingFrozen)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red when frozen
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+				if (ImGui::Button("Unfreeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
+				{
+					bIsRenderingFrozen = false;
+					if (GEngine)
+					{
+						GEngine->Exec(World, TEXT("FreezeRendering"));
+					}
+				}
+				ImGui::PopStyleColor(2);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f)); // Green when unfrozen
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+				if (ImGui::Button("Freeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
+				{
+					bIsRenderingFrozen = true;
+					if (GEngine)
+					{
+						GEngine->Exec(World, TEXT("FreezeRendering"));
 					}
 				}
 				ImGui::PopStyleColor(2);
@@ -467,6 +500,162 @@ namespace ImGuiPerformanceWidget
 			else
 			{
 				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Steam OSS API: Inactive (Standalone / NULL Subsystem)");
+			}
+
+			ImGui::Unindent();
+		}
+
+		// ---------------------------------------------------------------------
+		// SECTION 5: Crosshair Asset Inspector
+		// ---------------------------------------------------------------------
+		if (ImGui::CollapsingHeader("Crosshair Asset Inspector", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::Indent();
+
+			APlayerController* PC = World->GetFirstPlayerController();
+			if (PC)
+			{
+				FVector CameraLocation;
+				FRotator CameraRotation;
+				PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+				FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000.0f); // 50 meters
+				FCollisionQueryParams QueryParams;
+
+				// Ignore local player pawn
+				APawn* LocalPawn = PC->GetPawn();
+				if (LocalPawn)
+				{
+					QueryParams.AddIgnoredActor(LocalPawn);
+				}
+				// Ignore debug camera controller pawn if active
+				APawn* SpectatorPawn = PC->GetSpectatorPawn();
+				if (SpectatorPawn)
+				{
+					QueryParams.AddIgnoredActor(SpectatorPawn);
+				}
+
+				FHitResult HitResult;
+				bool bHit = World->LineTraceSingleByChannel(
+					HitResult,
+					CameraLocation,
+					TraceEnd,
+					ECC_Visibility,
+					QueryParams
+				);
+
+				UStaticMeshComponent* SMC = nullptr;
+				if (bHit && HitResult.GetComponent())
+				{
+					SMC = Cast<UStaticMeshComponent>(HitResult.GetComponent());
+				}
+
+				if (SMC && SMC->GetStaticMesh())
+				{
+					UStaticMesh* Mesh = SMC->GetStaticMesh();
+					float DistanceMeters = HitResult.Distance / 100.0f;
+
+					// Estimate LOD index based on screen size (or fallback to 0)
+					int32 ActiveLOD = 0;
+					if (SMC->GetForcedLodModel() > 0)
+					{
+						ActiveLOD = SMC->GetForcedLodModel() - 1;
+					}
+					else
+					{
+						// A simple distance-based heuristic as a compile-safe fallback for UE 5.6
+						if (DistanceMeters > 30.0f && Mesh->GetNumLODs() > 3) ActiveLOD = 3;
+						else if (DistanceMeters > 15.0f && Mesh->GetNumLODs() > 2) ActiveLOD = 2;
+						else if (DistanceMeters > 5.0f && Mesh->GetNumLODs() > 1) ActiveLOD = 1;
+					}
+
+					ImGui::Text("Mesh Name: %s", TCHAR_TO_UTF8(*Mesh->GetName()));
+					ImGui::Text("Distance: %.2fm", DistanceMeters);
+					ImGui::Text("Active LOD: %d", ActiveLOD);
+					ImGui::Text("Total LODs: %d", Mesh->GetNumLODs());
+
+					ImGui::Spacing();
+					ImGui::Separator();
+					ImGui::Spacing();
+					ImGui::Text("Texture Streaming / Mip Telemetry:");
+
+					TArray<UTexture*> Textures;
+					SMC->GetUsedTextures(Textures, EMaterialQualityLevel::High);
+
+					TArray<UTexture2D*> Textures2D;
+					for (UTexture* Tex : Textures)
+					{
+						if (UTexture2D* Tex2D = Cast<UTexture2D>(Tex))
+						{
+							Textures2D.Add(Tex2D);
+						}
+					}
+
+					if (Textures2D.Num() > 0)
+					{
+						if (ImGui::BeginTable("TextureTelemetryTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+						{
+							ImGui::TableSetupColumn("Texture Name");
+							ImGui::TableSetupColumn("Max Resolution");
+							ImGui::TableSetupColumn("Active Res (Streaming)");
+							ImGui::TableSetupColumn("Mips (Res / Max)");
+							ImGui::TableHeadersRow();
+
+							for (UTexture2D* Tex2D : Textures2D)
+							{
+								if (IsValid(Tex2D))
+								{
+									int32 BaseWidth = Tex2D->GetSizeX();
+									int32 BaseHeight = Tex2D->GetSizeY();
+									int32 MaxMips = Tex2D->GetNumMips();
+									int32 ResidentMips = Tex2D->GetNumResidentMips();
+
+									int32 ActiveWidth = FMath::Max(1, BaseWidth >> (MaxMips - ResidentMips));
+									int32 ActiveHeight = FMath::Max(1, BaseHeight >> (MaxMips - ResidentMips));
+
+									ImGui::TableNextRow();
+
+									// 1. Texture Name
+									ImGui::TableSetColumnIndex(0);
+									ImGui::Text("%s", TCHAR_TO_UTF8(*Tex2D->GetName()));
+
+									// 2. Max Resolution
+									ImGui::TableSetColumnIndex(1);
+									ImGui::Text("%dx%d", BaseWidth, BaseHeight);
+
+									// 3. Active Res
+									ImGui::TableSetColumnIndex(2);
+									if (DistanceMeters > 10.0f && ResidentMips == MaxMips)
+									{
+										ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.0f, 1.0f), "%dx%d", ActiveWidth, ActiveHeight);
+									}
+									else
+									{
+										ImGui::Text("%dx%d", ActiveWidth, ActiveHeight);
+									}
+
+									// 4. Mips
+									ImGui::TableSetColumnIndex(3);
+									ImGui::Text("%d / %d", ResidentMips, MaxMips);
+								}
+							}
+
+							ImGui::EndTable();
+						}
+					}
+					else
+					{
+						ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No 2D textures found on mesh materials.");
+					}
+				}
+				else
+				{
+					ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Aim at a static mesh to inspect LODs and Mipmaps.");
+				}
+			}
+			else
+			{
+				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Invalid Player Controller.");
 			}
 
 			ImGui::Unindent();
