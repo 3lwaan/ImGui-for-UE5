@@ -65,7 +65,14 @@ public class ImGui : ModuleRules
 				"Engine",
 				"InputCore",
 				"Slate",
-				"SlateCore"
+				"SlateCore",
+				"StorageCardSystem",
+				"AdvancedRecording",
+				"AdvancedVoiceRecording",
+				"BatterySystem",
+				"OnlineSubsystem",
+				"OnlineSubsystemUtils",
+				"RHI"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
