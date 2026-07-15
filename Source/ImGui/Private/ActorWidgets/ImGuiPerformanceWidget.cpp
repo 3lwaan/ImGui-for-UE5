@@ -12,6 +12,9 @@
 #include <Misc/App.h>
 #include <DynamicRHI.h>
 #include <Modules/ModuleManager.h>
+#include <GameFramework/PlayerController.h>
+#include <Engine/DebugCameraController.h>
+#include <Engine/Player.h>
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -135,6 +138,125 @@ namespace ImGuiPerformanceWidget
 				ImGui::TableSetColumnIndex(1); ImGui::Text("%.2f ms", FrameTimeMs);
 
 				ImGui::EndTable();
+			}
+
+			ImGui::Spacing();
+			ImGui::Separator();
+			ImGui::Spacing();
+			ImGui::Text("Viewport Visualization & Utilities");
+
+			// Viewmode dropdown
+			static int SelectedViewmode = 0; // Default: Lit
+			const char* Viewmodes[] = {
+				"Lit",
+				"Unlit",
+				"Wireframe",
+				"Detail Lighting",
+				"Lighting Only",
+				"Shader Complexity",
+				"Light Complexity",
+				"Stationary Light Overlap",
+				"Quad Overdraw",
+				"LOD Coloration",
+				"Base Color",
+				"Roughness",
+				"Normal",
+				"Specular",
+				"Metallic",
+				"Lumen Overview",
+				"Lumen Geometry",
+				"Lumen Reflections",
+				"Lumen Card"
+			};
+
+			if (ImGui::Combo("View Mode", &SelectedViewmode, Viewmodes, IM_ARRAYSIZE(Viewmodes)))
+			{
+				APlayerController* PC = World->GetFirstPlayerController();
+				if (PC)
+				{
+					bool bIsLumen = (SelectedViewmode >= 15);
+					if (!bIsLumen)
+					{
+						PC->ConsoleCommand(TEXT("r.Lumen.Visualize 0"));
+					}
+
+					switch (SelectedViewmode)
+					{
+						case 0:  PC->ConsoleCommand(TEXT("viewmode lit")); break;
+						case 1:  PC->ConsoleCommand(TEXT("viewmode unlit")); break;
+						case 2:  PC->ConsoleCommand(TEXT("viewmode wireframe")); break;
+						case 3:  PC->ConsoleCommand(TEXT("viewmode detaillighting")); break;
+						case 4:  PC->ConsoleCommand(TEXT("viewmode lightingonly")); break;
+						case 5:  PC->ConsoleCommand(TEXT("viewmode shadercomplexity")); break;
+						case 6:  PC->ConsoleCommand(TEXT("viewmode lightcomplexity")); break;
+						case 7:  PC->ConsoleCommand(TEXT("viewmode stationarylightoverlap")); break;
+						case 8:  PC->ConsoleCommand(TEXT("viewmode quadoverdraw")); break;
+						case 9:  PC->ConsoleCommand(TEXT("viewmode lodcoloration")); break;
+						case 10: PC->ConsoleCommand(TEXT("viewmode basecolor")); break;
+						case 11: PC->ConsoleCommand(TEXT("viewmode roughness")); break;
+						case 12: PC->ConsoleCommand(TEXT("viewmode normal")); break;
+						case 13: PC->ConsoleCommand(TEXT("viewmode specular")); break;
+						case 14: PC->ConsoleCommand(TEXT("viewmode metallic")); break;
+						case 15: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Overview")); break;
+						case 16: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Geometry")); break;
+						case 17: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Reflections")); break;
+						case 18: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize Card")); break;
+					}
+				}
+			}
+
+			// Noclip Debug Camera
+			bool bNoclipActive = false;
+			for (TObjectIterator<ADebugCameraController> It; It; ++It)
+			{
+				ADebugCameraController* DCC = *It;
+				if (IsValid(DCC) && DCC->GetWorld() == World && !DCC->IsTemplate())
+				{
+					bNoclipActive = true;
+					break;
+				}
+			}
+
+			ImGui::Spacing();
+
+			if (bNoclipActive)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red when active
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+				if (ImGui::Button("Disable Noclip (Debug Camera)", ImVec2(-FLT_MIN, 0.0f)))
+				{
+					ADebugCameraController* DCC = nullptr;
+					for (TObjectIterator<ADebugCameraController> It; It; ++It)
+					{
+						ADebugCameraController* FoundDCC = *It;
+						if (IsValid(FoundDCC) && FoundDCC->GetWorld() == World && !FoundDCC->IsTemplate())
+						{
+							DCC = FoundDCC;
+							break;
+						}
+					}
+
+					if (DCC && DCC->OriginalPlayer && DCC->OriginalControllerRef)
+					{
+						DCC->OriginalPlayer->SwitchController(DCC->OriginalControllerRef);
+						DCC->OnDeactivate(DCC->OriginalControllerRef);
+					}
+				}
+				ImGui::PopStyleColor(2);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f)); // Green when inactive
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+				if (ImGui::Button("Enable Noclip (Debug Camera)", ImVec2(-FLT_MIN, 0.0f)))
+				{
+					APlayerController* PC = World->GetFirstPlayerController();
+					if (PC)
+					{
+						PC->ConsoleCommand(TEXT("ToggleDebugCamera"));
+					}
+				}
+				ImGui::PopStyleColor(2);
 			}
 
 			ImGui::Unindent();
