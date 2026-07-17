@@ -5,6 +5,7 @@
 #include "ActorWidgets/ImGuiBatteryWidget.h"
 #include "ActorWidgets/ImGuiPerformanceWidget.h"
 #include "ActorWidgets/ImGuiElevatorWidget.h"
+#include "ActorWidgets/ImGuiInsightsTracerWidget.h"
 #include "ImGuiDelegates.h"
 
 #include <Engine/World.h>
@@ -58,6 +59,15 @@ static TAutoConsoleVariable<int32> CVarDebugElevators(
 	TEXT("imgui.DebugElevators"),
 	0,
 	TEXT("Toggle the ImGui debug window for Elevators.\n")
+	TEXT("0: Disabled\n")
+	TEXT("1: Enabled"),
+	ECVF_Cheat
+);
+
+static TAutoConsoleVariable<int32> CVarDebugInsights(
+	TEXT("imgui.DebugInsights"),
+	0,
+	TEXT("Toggle the ImGui debug window for Unreal Insights Tracer.\n")
 	TEXT("0: Disabled\n")
 	TEXT("1: Enabled"),
 	ECVF_Cheat
@@ -117,5 +127,10 @@ void UActorDebugWidgetsSubsystem::DrawDebugWidgets()
 	if (CVarDebugElevators.GetValueOnGameThread() != 0)
 	{
 		ImGuiElevatorWidget::Draw(World);
+	}
+
+	if (CVarDebugInsights.GetValueOnGameThread() != 0)
+	{
+		ImGuiInsightsTracerWidget::Draw(World);
 	}
 }
