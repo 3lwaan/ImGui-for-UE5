@@ -6,7 +6,7 @@
 #include <GameFramework/Actor.h>
 #include <UObject/UObjectIterator.h>
 
-static FString GetNetRoleString(ENetRole Role)
+static FString GetBatteryNetRoleString(ENetRole Role)
 {
 	switch (Role)
 	{
@@ -18,7 +18,7 @@ static FString GetNetRoleString(ENetRole Role)
 	}
 }
 
-static FString GetNetDormancyString(ENetDormancy Dormancy)
+static FString GetBatteryNetDormancyString(ENetDormancy Dormancy)
 {
 	switch (Dormancy)
 	{
@@ -123,11 +123,11 @@ namespace ImGuiBatteryWidget
 					{
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Network Role");
-						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetNetRoleString(OwnerActor->GetLocalRole())));
+						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetBatteryNetRoleString(OwnerActor->GetLocalRole())));
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Network Dormancy");
-						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetNetDormancyString(OwnerActor->NetDormancy)));
+						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetBatteryNetDormancyString(OwnerActor->NetDormancy)));
 					}
 
 					ImGui::EndTable();

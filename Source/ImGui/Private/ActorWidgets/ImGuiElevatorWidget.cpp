@@ -8,7 +8,7 @@
 #include <GameFramework/Actor.h>
 #include <UObject/UObjectIterator.h>
 
-static FString GetNetRoleString(ENetRole Role)
+static FString GetElevatorNetRoleString(ENetRole Role)
 {
 	switch (Role)
 	{
@@ -20,7 +20,7 @@ static FString GetNetRoleString(ENetRole Role)
 	}
 }
 
-static FString GetNetDormancyString(ENetDormancy Dormancy)
+static FString GetElevatorNetDormancyString(ENetDormancy Dormancy)
 {
 	switch (Dormancy)
 	{
@@ -222,15 +222,15 @@ namespace ImGuiElevatorWidget
 					{
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Local Role");
-						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetNetRoleString(OwnerActor->GetLocalRole())));
+						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetElevatorNetRoleString(OwnerActor->GetLocalRole())));
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Remote Role");
-						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetNetRoleString(OwnerActor->GetRemoteRole())));
+						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetElevatorNetRoleString(OwnerActor->GetRemoteRole())));
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Network Dormancy");
-						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetNetDormancyString(OwnerActor->NetDormancy)));
+						ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GetElevatorNetDormancyString(OwnerActor->NetDormancy)));
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0); ImGui::Text("Server Z / Client Sim Z");
