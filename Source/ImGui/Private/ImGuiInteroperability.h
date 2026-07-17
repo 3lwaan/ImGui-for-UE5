@@ -104,12 +104,12 @@ namespace ImGuiInterops
 	// Convert from ImGui Texture Id to Texture Index that we use for texture resources.
 	FORCEINLINE TextureIndex ToTextureIndex(ImTextureID Index)
 	{
-		return static_cast<TextureIndex>(reinterpret_cast<intptr_t>(Index));
+		return static_cast<TextureIndex>(Index);
 	}
 
 	// Convert from Texture Index to ImGui Texture Id that we pass to ImGui.
 	FORCEINLINE ImTextureID ToImTextureID(TextureIndex Index)
 	{
-		return reinterpret_cast<ImTextureID>(static_cast<intptr_t>(Index));
+		return static_cast<ImTextureID>(Index);
 	}
 }

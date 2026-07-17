@@ -8,6 +8,78 @@
 #include <HAL/FileManager.h>
 #include <Misc/App.h>
 
+FImGuiOutputDevice& FImGuiOutputDevice::Get()
+{
+	static FImGuiOutputDevice Instance;
+	return Instance;
+}
+
+FImGuiOutputDevice::FImGuiOutputDevice()
+	: bRegistered(false)
+	, bHasNewLines(false)
+{
+}
+
+FImGuiOutputDevice::~FImGuiOutputDevice()
+{
+	Unregister();
+}
+
+void FImGuiOutputDevice::Serialize(const TCHAR* V, ELogVerbosity::Type Verbosity, const class FName& Category)
+{
+	FScopeLock Lock(&CriticalSection);
+
+	FLogLine Line;
+	Line.Message = V;
+	Line.Verbosity = Verbosity;
+	Line.Category = Category;
+
+	Lines.Add(Line);
+	if (Lines.Num() > 500)
+	{
+		Lines.RemoveAt(0);
+	}
+
+	bHasNewLines = true;
+}
+
+void FImGuiOutputDevice::Clear()
+{
+	FScopeLock Lock(&CriticalSection);
+	Lines.Empty();
+}
+
+TArray<FLogLine> FImGuiOutputDevice::GetLines()
+{
+	FScopeLock Lock(&CriticalSection);
+	return Lines;
+}
+
+bool FImGuiOutputDevice::GetAndClearNewLinesFlag()
+{
+	bool bRet = bHasNewLines;
+	bHasNewLines = false;
+	return bRet;
+}
+
+void FImGuiOutputDevice::Register()
+{
+	if (GLog && !bRegistered)
+	{
+		GLog->AddOutputDevice(this);
+		bRegistered = true;
+	}
+}
+
+void FImGuiOutputDevice::Unregister()
+{
+	if (GLog && bRegistered)
+	{
+		GLog->RemoveOutputDevice(this);
+		bRegistered = false;
+	}
+}
+
 namespace ImGuiInsightsTracerWidget
 {
 	void Draw(UWorld* World)
@@ -38,6 +110,8 @@ namespace ImGuiInsightsTracerWidget
 
 		TraceThroughput[TraceThroughputIndex] = NewValue;
 		TraceThroughputIndex = (TraceThroughputIndex + 1) % 100;
+
+		static bool bShowOutputLog = false;
 
 		ImGui::SetNextWindowSize(ImVec2(400.0f, 320.0f), ImGuiCond_FirstUseEver);
 
@@ -93,11 +167,28 @@ namespace ImGuiInsightsTracerWidget
 			// Section 2: Explore Trace files
 			if (ImGui::Button("Open Traces Folder", ImVec2(-FLT_MIN, 30.0f)))
 			{
-				FString TraceFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Profiling/Traces/"));
+				FString TraceFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Profiling/"));
 				IFileManager::Get().MakeDirectory(*TraceFolder, true);
 				TraceFolder.ReplaceInline(TEXT("/"), TEXT("\\"));
 				FPlatformProcess::ExploreFolder(*TraceFolder);
 			}
+
+			ImGui::Spacing();
+
+			// Section 2b: Output Log & Multi-Monitor controls
+			if (ImGui::Button(bShowOutputLog ? "Hide Output Log" : "Show Output Log", ImVec2(-FLT_MIN, 30.0f)))
+			{
+				bShowOutputLog = !bShowOutputLog;
+			}
+
+			ImGui::Spacing();
+
+			// Multi-Monitor viewports require backend support for Platform_CreateWindow/DestroyWindow.
+			// Since the custom Slate backend in this plugin does not implement these OS handlers, multi-viewport is disabled.
+			bool bMultiWindow = false;
+			ImGui::BeginDisabled(true);
+			ImGui::Checkbox("Enable Multi-Window Mode (Not supported by Slate Backend)", &bMultiWindow);
+			ImGui::EndDisabled();
 
 			ImGui::Spacing();
 			ImGui::Separator();
@@ -139,5 +230,52 @@ namespace ImGuiInsightsTracerWidget
 			ImGui::TextWrapped("Saved trace files (*.utrace) can be opened and analyzed using the standalone Unreal Insights tool found in Engine/Binaries/DotNET/UnrealInsights/.");
 		}
 		ImGui::End();
+
+		// Section 4: Render separate Runtime Output Log Window
+		if (bShowOutputLog)
+		{
+			ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
+			if (ImGui::Begin("Runtime Output Log", &bShowOutputLog))
+			{
+				if (ImGui::Button("Clear Log"))
+				{
+					FImGuiOutputDevice::Get().Clear();
+				}
+
+				ImGui::Separator();
+				ImGui::Spacing();
+
+				// Child window for scroll area
+				ImGui::BeginChild("ScrollingRegion", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+				TArray<FLogLine> Lines = FImGuiOutputDevice::Get().GetLines();
+				for (const FLogLine& Line : Lines)
+				{
+					ImVec4 Color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // Default White
+					if (Line.Verbosity == ELogVerbosity::Error || Line.Verbosity == ELogVerbosity::Fatal)
+					{
+						Color = ImVec4(1.0f, 0.3f, 0.3f, 1.0f); // Red
+					}
+					else if (Line.Verbosity == ELogVerbosity::Warning)
+					{
+						Color = ImVec4(1.0f, 0.9f, 0.3f, 1.0f); // Yellow
+					}
+
+					ImGui::TextColored(Color, "[%s] %s", TCHAR_TO_UTF8(*Line.Category.ToString()), TCHAR_TO_UTF8(*Line.Message));
+				}
+
+				// Auto-scroll logic: scroll to bottom if new lines are present and we are at the bottom
+				if (FImGuiOutputDevice::Get().GetAndClearNewLinesFlag())
+				{
+					if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 10.0f)
+					{
+						ImGui::SetScrollHereY(1.0f);
+					}
+				}
+
+				ImGui::EndChild();
+			}
+			ImGui::End();
+		}
 	}
 }

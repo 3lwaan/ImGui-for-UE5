@@ -6,6 +6,27 @@
 #include "Utilities/Arrays.h"
 
 
+enum ImGuiNavInput_
+{
+	ImGuiNavInput_Activate,
+	ImGuiNavInput_Cancel,
+	ImGuiNavInput_Input,
+	ImGuiNavInput_Menu,
+	ImGuiNavInput_DpadLeft,
+	ImGuiNavInput_DpadRight,
+	ImGuiNavInput_DpadUp,
+	ImGuiNavInput_DpadDown,
+	ImGuiNavInput_LStickLeft,
+	ImGuiNavInput_LStickRight,
+	ImGuiNavInput_LStickUp,
+	ImGuiNavInput_LStickDown,
+	ImGuiNavInput_FocusPrev,
+	ImGuiNavInput_FocusNext,
+	ImGuiNavInput_TweakSlow,
+	ImGuiNavInput_TweakFast,
+	ImGuiNavInput_COUNT
+};
+
 // If TCHAR is wider than ImWchar, enable or disable validation of input character before conversions.
 #define VALIDATE_INPUT_CHARACTERS 1
 

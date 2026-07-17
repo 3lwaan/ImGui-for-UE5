@@ -81,12 +81,16 @@ void UActorDebugWidgetsSubsystem::Initialize(FSubsystemCollectionBase& Collectio
 {
 	Super::Initialize(Collection);
 
+	FImGuiOutputDevice::Get().Register();
+
 	FImGuiDelegates::OnWorldDebug(GetWorld()).AddUObject(this, &UActorDebugWidgetsSubsystem::DrawDebugWidgets);
 }
 
 void UActorDebugWidgetsSubsystem::Deinitialize()
 {
 	FImGuiDelegates::OnWorldDebug(GetWorld()).RemoveAll(this);
+
+	FImGuiOutputDevice::Get().Unregister();
 
 	Super::Deinitialize();
 }

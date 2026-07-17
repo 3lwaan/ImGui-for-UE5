@@ -6,6 +6,18 @@
 #include <imgui.h>
 #include <string>
 
+#ifndef ImGuiWindowFlags_AlwaysUseWindowPadding
+#define ImGuiWindowFlags_AlwaysUseWindowPadding (1 << 30)
+#endif
+
+#ifndef ImGuiTreeNodeFlags_AllowItemOverlap
+#define ImGuiTreeNodeFlags_AllowItemOverlap ImGuiTreeNodeFlags_AllowOverlap
+#endif
+
+#ifndef ImGuiSelectableFlags_AllowItemOverlap
+#define ImGuiSelectableFlags_AllowItemOverlap ImGuiSelectableFlags_AllowOverlap
+#endif
+
 // ---------------------------------------------------------------------------
 // Conversion Utilities
 // ---------------------------------------------------------------------------
