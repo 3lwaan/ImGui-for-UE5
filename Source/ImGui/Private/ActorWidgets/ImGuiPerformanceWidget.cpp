@@ -16,6 +16,8 @@
 #include <Engine/DebugCameraController.h>
 #include <Engine/Player.h>
 #include <GameFramework/SpectatorPawn.h>
+#include <GameFramework/CheatManager.h>
+#include <Engine/GameViewportClient.h>
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -175,10 +177,43 @@ namespace ImGuiPerformanceWidget
 				APlayerController* PC = World->GetFirstPlayerController();
 				if (PC)
 				{
+					// Ensure cheats are enabled for player controller (required for noclip/visualizations)
+					if (!PC->CheatManager)
+					{
+						PC->AddCheats(true);
+					}
+
 					bool bIsLumen = (SelectedViewmode >= 15);
 					if (!bIsLumen)
 					{
 						PC->ConsoleCommand(TEXT("r.Lumen.Visualize 0"));
+					}
+
+					// Apply viewmode directly to GameViewport to bypass console restrictions in packaged games
+					UGameViewportClient* GVC = GEngine ? GEngine->GameViewport : nullptr;
+					if (GVC)
+					{
+						EViewModeIndex EngineViewMode = VMI_Lit;
+						switch (SelectedViewmode)
+						{
+							case 0:  EngineViewMode = VMI_Lit; break;
+							case 1:  EngineViewMode = VMI_Unlit; break;
+							case 2:  EngineViewMode = VMI_BrushWireframe; break;
+							case 3:  EngineViewMode = VMI_Lit_DetailLighting; break;
+							case 4:  EngineViewMode = VMI_LightingOnly; break;
+							case 5:  EngineViewMode = VMI_ShaderComplexity; break;
+							case 6:  EngineViewMode = VMI_LightComplexity; break;
+							case 7:  EngineViewMode = VMI_StationaryLightOverlap; break;
+							case 8:  EngineViewMode = VMI_QuadOverdraw; break;
+							case 9:  EngineViewMode = VMI_LODColoration; break;
+							case 10: 
+							case 11:
+							case 12:
+							case 13:
+							case 14: EngineViewMode = VMI_VisualizeBuffer; break;
+							default: EngineViewMode = VMI_Lit; break;
+						}
+						GVC->SetViewMode(EngineViewMode);
 					}
 
 					switch (SelectedViewmode)
@@ -193,15 +228,15 @@ namespace ImGuiPerformanceWidget
 						case 7:  PC->ConsoleCommand(TEXT("viewmode stationarylightoverlap")); break;
 						case 8:  PC->ConsoleCommand(TEXT("viewmode quadoverdraw")); break;
 						case 9:  PC->ConsoleCommand(TEXT("viewmode lodcoloration")); break;
-						case 10: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget BaseColor")); break;
-						case 11: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Roughness")); break;
-						case 12: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget WorldNormal")); break;
-						case 13: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Specular")); break;
-						case 14: PC->ConsoleCommand(TEXT("viewmode buffervisualization")); PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Metallic")); break;
-						case 15: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 1")); break;
-						case 16: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 3")); break;
-						case 17: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 4")); break;
-						case 18: PC->ConsoleCommand(TEXT("viewmode lit")); PC->ConsoleCommand(TEXT("r.Lumen.Visualize 12")); break;
+						case 10: PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget BaseColor")); break;
+						case 11: PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Roughness")); break;
+						case 12: PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget WorldNormal")); break;
+						case 13: PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Specular")); break;
+						case 14: PC->ConsoleCommand(TEXT("r.BufferVisualizationTarget Metallic")); break;
+						case 15: PC->ConsoleCommand(TEXT("r.Lumen.Visualize 1")); break;
+						case 16: PC->ConsoleCommand(TEXT("r.Lumen.Visualize 3")); break;
+						case 17: PC->ConsoleCommand(TEXT("r.Lumen.Visualize 4")); break;
+						case 18: PC->ConsoleCommand(TEXT("r.Lumen.Visualize 12")); break;
 					}
 				}
 			}
@@ -254,7 +289,19 @@ namespace ImGuiPerformanceWidget
 					APlayerController* PC = World->GetFirstPlayerController();
 					if (PC)
 					{
-						PC->ConsoleCommand(TEXT("ToggleDebugCamera"));
+						if (!PC->CheatManager)
+						{
+							PC->AddCheats(true);
+						}
+
+						if (PC->CheatManager)
+						{
+							PC->CheatManager->ToggleDebugCamera();
+						}
+						else
+						{
+							PC->ConsoleCommand(TEXT("ToggleDebugCamera"));
+						}
 					}
 				}
 				ImGui::PopStyleColor(2);
