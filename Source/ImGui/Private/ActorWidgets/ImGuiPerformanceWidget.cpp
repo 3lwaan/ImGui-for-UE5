@@ -464,52 +464,41 @@ namespace ImGuiPerformanceWidget
 		}
 
 		// ---------------------------------------------------------------------
-		// SECTION 4: Steam Integration Details
+		// SECTION 4: Online Subsystem (OSS) Diagnostics
 		// ---------------------------------------------------------------------
-		if (ImGui::CollapsingHeader("Steam Integration Kit", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("Online Subsystem Diagnostics", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Indent();
 
-			IOnlineSubsystem* DefaultOSS = IOnlineSubsystem::Get();
-			FString DefaultSubName = DefaultOSS ? DefaultOSS->GetSubsystemName().ToString() : TEXT("None");
+			IOnlineSubsystem* ActiveOSS = IOnlineSubsystem::Get();
+			FString SubName = ActiveOSS ? ActiveOSS->GetSubsystemName().ToString() : TEXT("None");
 
-			ImGui::Text("Default Online Subsystem: %s", TCHAR_TO_UTF8(*DefaultSubName));
+			ImGui::Text("Active Online Subsystem: %s", TCHAR_TO_UTF8(*SubName));
 
-			static IOnlineSubsystem* SteamOSS = nullptr;
-			static bool bSteamOSSChecked = false;
-			if (!bSteamOSSChecked)
+			if (ActiveOSS)
 			{
-				bSteamOSSChecked = true;
-				if (FModuleManager::Get().IsModuleLoaded(TEXT("OnlineSubsystemSteam")))
-				{
-					SteamOSS = IOnlineSubsystem::Get(FName(TEXT("STEAM")));
-				}
-			}
+				ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Online Subsystem: Active & Connected");
 
-			if (SteamOSS)
-			{
-				ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Steam OSS API: Active & Connected");
-
-				IOnlineIdentityPtr Identity = SteamOSS->GetIdentityInterface();
+				IOnlineIdentityPtr Identity = ActiveOSS->GetIdentityInterface();
 				if (Identity.IsValid())
 				{
 					TSharedPtr<const FUniqueNetId> NetId = Identity->GetUniquePlayerId(0);
 					if (NetId.IsValid())
 					{
-						ImGui::Text("User SteamID: %s", TCHAR_TO_UTF8(*NetId->ToString()));
+						ImGui::Text("User UniqueID: %s", TCHAR_TO_UTF8(*NetId->ToString()));
 						ImGui::Text("Nickname: %s", TCHAR_TO_UTF8(*Identity->GetPlayerNickname(0)));
 					}
 				}
 
-				IOnlineSessionPtr Session = SteamOSS->GetSessionInterface();
+				IOnlineSessionPtr Session = ActiveOSS->GetSessionInterface();
 				if (Session.IsValid())
 				{
 					FNamedOnlineSession* GameSession = Session->GetNamedSession(NAME_GameSession);
 					if (GameSession)
 					{
 						ImGui::Spacing();
-						ImGui::Text("Steam Game Session Status:");
-						if (ImGui::BeginTable("SteamSessionTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+						ImGui::Text("Active Game Session Status:");
+						if (ImGui::BeginTable("OSSSessionTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 						{
 							ImGui::TableNextRow();
 							ImGui::TableSetColumnIndex(0); ImGui::Text("Session Name");
@@ -525,7 +514,7 @@ namespace ImGuiPerformanceWidget
 							ImGui::TableSetColumnIndex(1); ImGui::Text("%d / %d slots filled", GameSession->RegisteredPlayers.Num(), TotalSlots);
 
 							ImGui::TableNextRow();
-							ImGui::TableSetColumnIndex(0); ImGui::Text("Lobby/Session ID");
+							ImGui::TableSetColumnIndex(0); ImGui::Text("Session ID");
 							if (GameSession->SessionInfo.IsValid())
 							{
 								ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GameSession->SessionInfo->GetSessionId().ToString()));
@@ -540,13 +529,13 @@ namespace ImGuiPerformanceWidget
 					}
 					else
 					{
-						ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No active Steam Game Sessions hosted.");
+						ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No active Online Game Sessions hosted.");
 					}
 				}
 			}
 			else
 			{
-				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Steam OSS API: Inactive (Standalone / NULL Subsystem)");
+				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Online Subsystem: Inactive (Standalone / NULL Subsystem)");
 			}
 
 			ImGui::Unindent();

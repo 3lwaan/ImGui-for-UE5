@@ -66,11 +66,6 @@ public class ImGui : ModuleRules
 				"InputCore",
 				"Slate",
 				"SlateCore",
-				"StorageCardSystem",
-				"AdvancedRecording",
-				"AdvancedVoiceRecording",
-				"BatterySystem",
-				"AdvancedElevatorSystem",
 				"OnlineSubsystem",
 				"OnlineSubsystemUtils",
 				"RHI"
