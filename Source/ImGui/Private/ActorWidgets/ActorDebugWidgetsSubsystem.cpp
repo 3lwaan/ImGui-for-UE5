@@ -1,6 +1,7 @@
 #include "ActorWidgets/ActorDebugWidgetsSubsystem.h"
 #include "ActorWidgets/ImGuiPerformanceWidget.h"
 #include "ActorWidgets/ImGuiInsightsTracerWidget.h"
+#include "ActorWidgets/ImGuiCharacterPropertiesWidget.h"
 #include "ImGuiDelegates.h"
 
 #include <Engine/World.h>
@@ -18,6 +19,15 @@ static TAutoConsoleVariable<int32> CVarDebugInsights(
 	TEXT("imgui.DebugInsights"),
 	0,
 	TEXT("Toggle the ImGui debug window for Unreal Insights Tracer.\n")
+	TEXT("0: Disabled\n")
+	TEXT("1: Enabled"),
+	ECVF_Cheat
+);
+
+static TAutoConsoleVariable<int32> CVarDebugCharacterProperties(
+	TEXT("imgui.DebugCharacterProperties"),
+	0,
+	TEXT("Toggle the ImGui debug window for Character Properties Debugger.\n")
 	TEXT("0: Disabled\n")
 	TEXT("1: Enabled"),
 	ECVF_Cheat
@@ -61,5 +71,10 @@ void UActorDebugWidgetsSubsystem::DrawDebugWidgets()
 	if (CVarDebugInsights.GetValueOnGameThread() != 0)
 	{
 		ImGuiInsightsTracerWidget::Draw(World);
+	}
+
+	if (CVarDebugCharacterProperties.GetValueOnGameThread() != 0)
+	{
+		ImGuiCharacterPropertiesWidget::Draw(World);
 	}
 }

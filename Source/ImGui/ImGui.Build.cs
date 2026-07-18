@@ -68,7 +68,8 @@ public class ImGui : ModuleRules
 				"SlateCore",
 				"OnlineSubsystem",
 				"OnlineSubsystemUtils",
-				"RHI"
+				"RHI",
+				"UMG"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
