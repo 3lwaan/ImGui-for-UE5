@@ -18,6 +18,7 @@
 #include <GameFramework/SpectatorPawn.h>
 #include <GameFramework/CheatManager.h>
 #include <Engine/GameViewportClient.h>
+#include "ActorWidgets/ActorDebugWidgetsSubsystem.h"
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -38,6 +39,14 @@ namespace ImGuiPerformanceWidget
 		if (!World)
 		{
 			ImGui::Text("Invalid World");
+			ImGui::End();
+			return;
+		}
+
+		UActorDebugWidgetsSubsystem* Subsystem = World->GetSubsystem<UActorDebugWidgetsSubsystem>();
+		if (!Subsystem)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Subsystem not found");
 			ImGui::End();
 			return;
 		}
@@ -102,20 +111,18 @@ namespace ImGuiPerformanceWidget
 			float FPS = ImGui::GetIO().Framerate;
 
 			// Graph logic
-			static float FrameTimes[100] = { 0 };
-			static int32 FrameTimeIndex = 0;
-			FrameTimes[FrameTimeIndex] = FrameTimeMs;
-			FrameTimeIndex = (FrameTimeIndex + 1) % 100;
+			Subsystem->FrameTimes[Subsystem->FrameTimeIndex] = FrameTimeMs;
+			Subsystem->FrameTimeIndex = (Subsystem->FrameTimeIndex + 1) % 100;
 
 			// Find average / peak
 			float AvgTime = 0.0f;
 			float PeakTime = 0.0f;
 			for (int32 i = 0; i < 100; ++i)
 			{
-				AvgTime += FrameTimes[i];
-				if (FrameTimes[i] > PeakTime)
+				AvgTime += Subsystem->FrameTimes[i];
+				if (Subsystem->FrameTimes[i] > PeakTime)
 				{
-					PeakTime = FrameTimes[i];
+					PeakTime = Subsystem->FrameTimes[i];
 				}
 			}
 			AvgTime /= 100.0f;
@@ -125,7 +132,7 @@ namespace ImGuiPerformanceWidget
 			ImGui::Text("Realtime Frame Time Graph:");
 			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.0f, 0.8f, 0.8f, 1.0f)); // Bright Cyan
 			ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(0.0f, 1.0f, 1.0f, 1.0f)); // Bright Cyan Hovered
-			ImGui::PlotLines("##FrameTimeGraph", FrameTimes, 100, FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(0.0f, 80.0f));
+			ImGui::PlotLines("##FrameTimeGraph", Subsystem->FrameTimes, 100, Subsystem->FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(0.0f, 80.0f));
 			ImGui::PopStyleColor(2);
 
 			ImGui::Spacing();
@@ -149,7 +156,6 @@ namespace ImGuiPerformanceWidget
 			ImGui::Text("Viewport Visualization & Utilities");
 
 			// Viewmode dropdown
-			static int SelectedViewmode = 0; // Default: Lit
 			const char* Viewmodes[] = {
 				"Lit",
 				"Unlit",
@@ -172,7 +178,7 @@ namespace ImGuiPerformanceWidget
 				"Lumen Card"
 			};
 
-			if (ImGui::Combo("View Mode", &SelectedViewmode, Viewmodes, IM_ARRAYSIZE(Viewmodes)))
+			if (ImGui::Combo("View Mode", &Subsystem->SelectedViewmode, Viewmodes, IM_ARRAYSIZE(Viewmodes)))
 			{
 				APlayerController* PC = World->GetFirstPlayerController();
 				if (PC)
@@ -183,7 +189,7 @@ namespace ImGuiPerformanceWidget
 						PC->AddCheats(true);
 					}
 
-					bool bIsLumen = (SelectedViewmode >= 15);
+					bool bIsLumen = (Subsystem->SelectedViewmode >= 15);
 					if (!bIsLumen)
 					{
 						PC->ConsoleCommand(TEXT("r.Lumen.Visualize 0"));
@@ -194,7 +200,7 @@ namespace ImGuiPerformanceWidget
 					if (GVC)
 					{
 						EViewModeIndex EngineViewMode = VMI_Lit;
-						switch (SelectedViewmode)
+						switch (Subsystem->SelectedViewmode)
 						{
 							case 0:  EngineViewMode = VMI_Lit; break;
 							case 1:  EngineViewMode = VMI_Unlit; break;
@@ -216,7 +222,7 @@ namespace ImGuiPerformanceWidget
 						GVC->SetViewMode(EngineViewMode);
 					}
 
-					switch (SelectedViewmode)
+					switch (Subsystem->SelectedViewmode)
 					{
 						case 0:  PC->ConsoleCommand(TEXT("viewmode lit")); break;
 						case 1:  PC->ConsoleCommand(TEXT("viewmode unlit")); break;
@@ -308,15 +314,14 @@ namespace ImGuiPerformanceWidget
 			}
 
 			// Freeze Rendering
-			static bool bIsRenderingFrozen = false;
 			ImGui::Spacing();
-			if (bIsRenderingFrozen)
+			if (Subsystem->bIsRenderingFrozen)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red when frozen
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
 				if (ImGui::Button("Unfreeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
 				{
-					bIsRenderingFrozen = false;
+					Subsystem->bIsRenderingFrozen = false;
 					if (GEngine)
 					{
 						GEngine->Exec(World, TEXT("FreezeRendering"));
@@ -330,7 +335,7 @@ namespace ImGuiPerformanceWidget
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
 				if (ImGui::Button("Freeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
 				{
-					bIsRenderingFrozen = true;
+					Subsystem->bIsRenderingFrozen = true;
 					if (GEngine)
 					{
 						GEngine->Exec(World, TEXT("FreezeRendering"));
@@ -464,52 +469,41 @@ namespace ImGuiPerformanceWidget
 		}
 
 		// ---------------------------------------------------------------------
-		// SECTION 4: Steam Integration Details
+		// SECTION 4: Online Subsystem (OSS) Diagnostics
 		// ---------------------------------------------------------------------
-		if (ImGui::CollapsingHeader("Steam Integration Kit", ImGuiTreeNodeFlags_DefaultOpen))
+		if (ImGui::CollapsingHeader("Online Subsystem Diagnostics", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::Indent();
 
-			IOnlineSubsystem* DefaultOSS = IOnlineSubsystem::Get();
-			FString DefaultSubName = DefaultOSS ? DefaultOSS->GetSubsystemName().ToString() : TEXT("None");
+			IOnlineSubsystem* ActiveOSS = IOnlineSubsystem::Get();
+			FString SubName = ActiveOSS ? ActiveOSS->GetSubsystemName().ToString() : TEXT("None");
 
-			ImGui::Text("Default Online Subsystem: %s", TCHAR_TO_UTF8(*DefaultSubName));
+			ImGui::Text("Active Online Subsystem: %s", TCHAR_TO_UTF8(*SubName));
 
-			static IOnlineSubsystem* SteamOSS = nullptr;
-			static bool bSteamOSSChecked = false;
-			if (!bSteamOSSChecked)
+			if (ActiveOSS)
 			{
-				bSteamOSSChecked = true;
-				if (FModuleManager::Get().IsModuleLoaded(TEXT("OnlineSubsystemSteam")))
-				{
-					SteamOSS = IOnlineSubsystem::Get(FName(TEXT("STEAM")));
-				}
-			}
+				ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Online Subsystem: Active & Connected");
 
-			if (SteamOSS)
-			{
-				ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Steam OSS API: Active & Connected");
-
-				IOnlineIdentityPtr Identity = SteamOSS->GetIdentityInterface();
+				IOnlineIdentityPtr Identity = ActiveOSS->GetIdentityInterface();
 				if (Identity.IsValid())
 				{
 					TSharedPtr<const FUniqueNetId> NetId = Identity->GetUniquePlayerId(0);
 					if (NetId.IsValid())
 					{
-						ImGui::Text("User SteamID: %s", TCHAR_TO_UTF8(*NetId->ToString()));
+						ImGui::Text("User UniqueID: %s", TCHAR_TO_UTF8(*NetId->ToString()));
 						ImGui::Text("Nickname: %s", TCHAR_TO_UTF8(*Identity->GetPlayerNickname(0)));
 					}
 				}
 
-				IOnlineSessionPtr Session = SteamOSS->GetSessionInterface();
+				IOnlineSessionPtr Session = ActiveOSS->GetSessionInterface();
 				if (Session.IsValid())
 				{
 					FNamedOnlineSession* GameSession = Session->GetNamedSession(NAME_GameSession);
 					if (GameSession)
 					{
 						ImGui::Spacing();
-						ImGui::Text("Steam Game Session Status:");
-						if (ImGui::BeginTable("SteamSessionTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+						ImGui::Text("Active Game Session Status:");
+						if (ImGui::BeginTable("OSSSessionTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
 						{
 							ImGui::TableNextRow();
 							ImGui::TableSetColumnIndex(0); ImGui::Text("Session Name");
@@ -525,7 +519,7 @@ namespace ImGuiPerformanceWidget
 							ImGui::TableSetColumnIndex(1); ImGui::Text("%d / %d slots filled", GameSession->RegisteredPlayers.Num(), TotalSlots);
 
 							ImGui::TableNextRow();
-							ImGui::TableSetColumnIndex(0); ImGui::Text("Lobby/Session ID");
+							ImGui::TableSetColumnIndex(0); ImGui::Text("Session ID");
 							if (GameSession->SessionInfo.IsValid())
 							{
 								ImGui::TableSetColumnIndex(1); ImGui::Text("%s", TCHAR_TO_UTF8(*GameSession->SessionInfo->GetSessionId().ToString()));
@@ -540,13 +534,13 @@ namespace ImGuiPerformanceWidget
 					}
 					else
 					{
-						ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No active Steam Game Sessions hosted.");
+						ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No active Online Game Sessions hosted.");
 					}
 				}
 			}
 			else
 			{
-				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Steam OSS API: Inactive (Standalone / NULL Subsystem)");
+				ImGui::TextColored(ImVec4(0.9f, 0.2f, 0.2f, 1.0f), "Online Subsystem: Inactive (Standalone / NULL Subsystem)");
 			}
 
 			ImGui::Unindent();

@@ -73,7 +73,8 @@ public class ImGui : ModuleRules
 				"AdvancedElevatorSystem",
 				"OnlineSubsystem",
 				"OnlineSubsystemUtils",
-				"RHI"
+				"RHI",
+				"UMG"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
