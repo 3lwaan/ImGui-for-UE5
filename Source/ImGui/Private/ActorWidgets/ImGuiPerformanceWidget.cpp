@@ -18,6 +18,7 @@
 #include <GameFramework/SpectatorPawn.h>
 #include <GameFramework/CheatManager.h>
 #include <Engine/GameViewportClient.h>
+#include "ActorWidgets/ActorDebugWidgetsSubsystem.h"
 
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -38,6 +39,14 @@ namespace ImGuiPerformanceWidget
 		if (!World)
 		{
 			ImGui::Text("Invalid World");
+			ImGui::End();
+			return;
+		}
+
+		UActorDebugWidgetsSubsystem* Subsystem = World->GetSubsystem<UActorDebugWidgetsSubsystem>();
+		if (!Subsystem)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Subsystem not found");
 			ImGui::End();
 			return;
 		}
@@ -102,20 +111,18 @@ namespace ImGuiPerformanceWidget
 			float FPS = ImGui::GetIO().Framerate;
 
 			// Graph logic
-			static float FrameTimes[100] = { 0 };
-			static int32 FrameTimeIndex = 0;
-			FrameTimes[FrameTimeIndex] = FrameTimeMs;
-			FrameTimeIndex = (FrameTimeIndex + 1) % 100;
+			Subsystem->FrameTimes[Subsystem->FrameTimeIndex] = FrameTimeMs;
+			Subsystem->FrameTimeIndex = (Subsystem->FrameTimeIndex + 1) % 100;
 
 			// Find average / peak
 			float AvgTime = 0.0f;
 			float PeakTime = 0.0f;
 			for (int32 i = 0; i < 100; ++i)
 			{
-				AvgTime += FrameTimes[i];
-				if (FrameTimes[i] > PeakTime)
+				AvgTime += Subsystem->FrameTimes[i];
+				if (Subsystem->FrameTimes[i] > PeakTime)
 				{
-					PeakTime = FrameTimes[i];
+					PeakTime = Subsystem->FrameTimes[i];
 				}
 			}
 			AvgTime /= 100.0f;
@@ -125,7 +132,7 @@ namespace ImGuiPerformanceWidget
 			ImGui::Text("Realtime Frame Time Graph:");
 			ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.0f, 0.8f, 0.8f, 1.0f)); // Bright Cyan
 			ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(0.0f, 1.0f, 1.0f, 1.0f)); // Bright Cyan Hovered
-			ImGui::PlotLines("##FrameTimeGraph", FrameTimes, 100, FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(0.0f, 80.0f));
+			ImGui::PlotLines("##FrameTimeGraph", Subsystem->FrameTimes, 100, Subsystem->FrameTimeIndex, GraphLabel, 0.0f, 60.0f, ImVec2(0.0f, 80.0f));
 			ImGui::PopStyleColor(2);
 
 			ImGui::Spacing();
@@ -149,7 +156,6 @@ namespace ImGuiPerformanceWidget
 			ImGui::Text("Viewport Visualization & Utilities");
 
 			// Viewmode dropdown
-			static int SelectedViewmode = 0; // Default: Lit
 			const char* Viewmodes[] = {
 				"Lit",
 				"Unlit",
@@ -172,7 +178,7 @@ namespace ImGuiPerformanceWidget
 				"Lumen Card"
 			};
 
-			if (ImGui::Combo("View Mode", &SelectedViewmode, Viewmodes, IM_ARRAYSIZE(Viewmodes)))
+			if (ImGui::Combo("View Mode", &Subsystem->SelectedViewmode, Viewmodes, IM_ARRAYSIZE(Viewmodes)))
 			{
 				APlayerController* PC = World->GetFirstPlayerController();
 				if (PC)
@@ -183,7 +189,7 @@ namespace ImGuiPerformanceWidget
 						PC->AddCheats(true);
 					}
 
-					bool bIsLumen = (SelectedViewmode >= 15);
+					bool bIsLumen = (Subsystem->SelectedViewmode >= 15);
 					if (!bIsLumen)
 					{
 						PC->ConsoleCommand(TEXT("r.Lumen.Visualize 0"));
@@ -194,7 +200,7 @@ namespace ImGuiPerformanceWidget
 					if (GVC)
 					{
 						EViewModeIndex EngineViewMode = VMI_Lit;
-						switch (SelectedViewmode)
+						switch (Subsystem->SelectedViewmode)
 						{
 							case 0:  EngineViewMode = VMI_Lit; break;
 							case 1:  EngineViewMode = VMI_Unlit; break;
@@ -216,7 +222,7 @@ namespace ImGuiPerformanceWidget
 						GVC->SetViewMode(EngineViewMode);
 					}
 
-					switch (SelectedViewmode)
+					switch (Subsystem->SelectedViewmode)
 					{
 						case 0:  PC->ConsoleCommand(TEXT("viewmode lit")); break;
 						case 1:  PC->ConsoleCommand(TEXT("viewmode unlit")); break;
@@ -308,15 +314,14 @@ namespace ImGuiPerformanceWidget
 			}
 
 			// Freeze Rendering
-			static bool bIsRenderingFrozen = false;
 			ImGui::Spacing();
-			if (bIsRenderingFrozen)
+			if (Subsystem->bIsRenderingFrozen)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red when frozen
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
 				if (ImGui::Button("Unfreeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
 				{
-					bIsRenderingFrozen = false;
+					Subsystem->bIsRenderingFrozen = false;
 					if (GEngine)
 					{
 						GEngine->Exec(World, TEXT("FreezeRendering"));
@@ -330,7 +335,7 @@ namespace ImGuiPerformanceWidget
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
 				if (ImGui::Button("Freeze Rendering", ImVec2(-FLT_MIN, 0.0f)))
 				{
-					bIsRenderingFrozen = true;
+					Subsystem->bIsRenderingFrozen = true;
 					if (GEngine)
 					{
 						GEngine->Exec(World, TEXT("FreezeRendering"));

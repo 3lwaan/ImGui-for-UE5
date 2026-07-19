@@ -7,6 +7,7 @@
 #include <HAL/PlatformProcess.h>
 #include <HAL/FileManager.h>
 #include <Misc/App.h>
+#include "ActorWidgets/ActorDebugWidgetsSubsystem.h"
 
 FImGuiOutputDevice& FImGuiOutputDevice::Get()
 {
@@ -89,15 +90,17 @@ namespace ImGuiInsightsTracerWidget
 			return;
 		}
 
-		static bool bIsTracing = false;
-
-		// Simulated tracing buffer throughput plot
-		static float TraceThroughput[100] = { 0.0f };
-		static int32 TraceThroughputIndex = 0;
+		UActorDebugWidgetsSubsystem* Subsystem = World->GetSubsystem<UActorDebugWidgetsSubsystem>();
+		if (!Subsystem)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Subsystem not found");
+			ImGui::End();
+			return;
+		}
 
 		// Shift buffer & compute simulated trace overhead data rate
 		float NewValue = 0.0f;
-		if (bIsTracing)
+		if (Subsystem->bIsTracing)
 		{
 			// Fluctuates between 75MB/s and 125MB/s to simulate trace stream writing activity
 			NewValue = 75.0f + (FMath::FRand() * 50.0f);
@@ -108,17 +111,15 @@ namespace ImGuiInsightsTracerWidget
 			NewValue = 0.0f;
 		}
 
-		TraceThroughput[TraceThroughputIndex] = NewValue;
-		TraceThroughputIndex = (TraceThroughputIndex + 1) % 100;
-
-		static bool bShowOutputLog = false;
+		Subsystem->TraceThroughput[Subsystem->TraceThroughputIndex] = NewValue;
+		Subsystem->TraceThroughputIndex = (Subsystem->TraceThroughputIndex + 1) % 100;
 
 		ImGui::SetNextWindowSize(ImVec2(400.0f, 320.0f), ImGuiCond_FirstUseEver);
 
 		if (ImGui::Begin("Unreal Insights Tracer", nullptr, ImGuiWindowFlags_NoScrollbar))
 		{
 			// Status bar / Header Indicator
-			if (bIsTracing)
+			if (Subsystem->bIsTracing)
 			{
 				// Pulsing recording red color
 				float PulseAlpha = 0.6f + (FMath::Sin(FApp::GetCurrentTime() * 8.0f) * 0.4f);
@@ -133,7 +134,7 @@ namespace ImGuiInsightsTracerWidget
 			ImGui::Spacing();
 
 			// Section 1: Capture Tracing Buttons
-			if (!bIsTracing)
+			if (!Subsystem->bIsTracing)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f)); // Safe Green
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
@@ -143,7 +144,7 @@ namespace ImGuiInsightsTracerWidget
 					{
 						GEngine->Exec(World, TEXT("trace.start cpu,frame,gpu,bookmark,loadtime"));
 					}
-					bIsTracing = true;
+					Subsystem->bIsTracing = true;
 				}
 				ImGui::PopStyleColor(2);
 			}
@@ -157,7 +158,7 @@ namespace ImGuiInsightsTracerWidget
 					{
 						GEngine->Exec(World, TEXT("trace.stop"));
 					}
-					bIsTracing = false;
+					Subsystem->bIsTracing = false;
 				}
 				ImGui::PopStyleColor(2);
 			}
@@ -176,9 +177,9 @@ namespace ImGuiInsightsTracerWidget
 			ImGui::Spacing();
 
 			// Section 2b: Output Log & Multi-Monitor controls
-			if (ImGui::Button(bShowOutputLog ? "Hide Output Log" : "Show Output Log", ImVec2(-FLT_MIN, 30.0f)))
+			if (ImGui::Button(Subsystem->bShowOutputLog ? "Hide Output Log" : "Show Output Log", ImVec2(-FLT_MIN, 30.0f)))
 			{
-				bShowOutputLog = !bShowOutputLog;
+				Subsystem->bShowOutputLog = !Subsystem->bShowOutputLog;
 			}
 
 			ImGui::Spacing();
@@ -199,10 +200,10 @@ namespace ImGuiInsightsTracerWidget
 			float AvgVal = 0.0f;
 			for (int32 i = 0; i < 100; ++i)
 			{
-				AvgVal += TraceThroughput[i];
-				if (TraceThroughput[i] > MaxVal)
+				AvgVal += Subsystem->TraceThroughput[i];
+				if (Subsystem->TraceThroughput[i] > MaxVal)
 				{
-					MaxVal = TraceThroughput[i];
+					MaxVal = Subsystem->TraceThroughput[i];
 				}
 			}
 			AvgVal /= 100.0f;
@@ -212,7 +213,7 @@ namespace ImGuiInsightsTracerWidget
 
 			ImGui::Text("Trace Stream Output Rate:");
 			
-			if (bIsTracing)
+			if (Subsystem->bIsTracing)
 			{
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(1.0f, 0.3f, 0.3f, 1.0f)); // Red plot
 				ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
@@ -223,7 +224,7 @@ namespace ImGuiInsightsTracerWidget
 				ImGui::PushStyleColor(ImGuiCol_PlotLinesHovered, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
 			}
 
-			ImGui::PlotLines("##TraceBufferPlot", TraceThroughput, 100, TraceThroughputIndex, GraphLabel, 0.0f, 150.0f, ImVec2(0.0f, 80.0f));
+			ImGui::PlotLines("##TraceBufferPlot", Subsystem->TraceThroughput, 100, Subsystem->TraceThroughputIndex, GraphLabel, 0.0f, 150.0f, ImVec2(0.0f, 80.0f));
 			ImGui::PopStyleColor(2);
 
 			ImGui::Spacing();
@@ -232,10 +233,10 @@ namespace ImGuiInsightsTracerWidget
 		ImGui::End();
 
 		// Section 4: Render separate Runtime Output Log Window
-		if (bShowOutputLog)
+		if (Subsystem->bShowOutputLog)
 		{
 			ImGui::SetNextWindowSize(ImVec2(600.0f, 400.0f), ImGuiCond_FirstUseEver);
-			if (ImGui::Begin("Runtime Output Log", &bShowOutputLog))
+			if (ImGui::Begin("Runtime Output Log", &Subsystem->bShowOutputLog))
 			{
 				if (ImGui::Button("Clear Log"))
 				{

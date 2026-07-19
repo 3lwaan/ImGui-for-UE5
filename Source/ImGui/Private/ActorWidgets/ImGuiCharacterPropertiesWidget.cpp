@@ -1,4 +1,5 @@
 #include "ActorWidgets/ImGuiCharacterPropertiesWidget.h"
+#include "ActorWidgets/ActorDebugWidgetsSubsystem.h"
 
 #include <imgui.h>
 #include <Engine/World.h>
@@ -8,18 +9,6 @@
 
 namespace ImGuiCharacterPropertiesWidget
 {
-	// Track states across frames
-	static bool bShowCollision = false;
-	static bool bShowBones = false;
-	static bool bVisualizeMovement = false;
-	static bool bDebugTrajectory = false;
-	static bool bDebugMMQuery = false;
-	static bool bDebugRootOffset = false;
-	static bool bDebugOrientationWarping = false;
-	static bool bDebugFootPlacement = false;
-
-	static TWeakObjectPtr<UUserWidget> ControllerWidgetInstance = nullptr;
-
 	static void AddTooltip(const char* Text)
 	{
 		if (ImGui::IsItemHovered())
@@ -54,6 +43,14 @@ namespace ImGuiCharacterPropertiesWidget
 			return;
 		}
 
+		UActorDebugWidgetsSubsystem* Subsystem = World->GetSubsystem<UActorDebugWidgetsSubsystem>();
+		if (!Subsystem)
+		{
+			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Error: Subsystem not found!");
+			ImGui::End();
+			return;
+		}
+
 		// Header title with sleek theme color
 		ImGui::TextColored(ImVec4(0.0f, 0.8f, 0.8f, 1.0f), "Character Diagnostics & Telemetry");
 		ImGui::Separator();
@@ -74,7 +71,7 @@ namespace ImGuiCharacterPropertiesWidget
 				ImGui::Spacing();
 
 				// Collision
-				if (ImGui::Checkbox("Show Collision Volumes", &bShowCollision))
+				if (ImGui::Checkbox("Show Collision Volumes", &Subsystem->bShowCollision))
 				{
 					PC->ConsoleCommand(TEXT("Show Collision"));
 				}
@@ -83,7 +80,7 @@ namespace ImGuiCharacterPropertiesWidget
 				ImGui::Spacing();
 
 				// Bones
-				if (ImGui::Checkbox("Show Skeletal Bones", &bShowBones))
+				if (ImGui::Checkbox("Show Skeletal Bones", &Subsystem->bShowBones))
 				{
 					PC->ConsoleCommand(TEXT("Show Bones"));
 				}
@@ -92,9 +89,9 @@ namespace ImGuiCharacterPropertiesWidget
 				ImGui::Spacing();
 
 				// Movement
-				if (ImGui::Checkbox("Visualize Character Movement", &bVisualizeMovement))
+				if (ImGui::Checkbox("Visualize Character Movement", &Subsystem->bVisualizeMovement))
 				{
-					PC->ConsoleCommand(bVisualizeMovement ? TEXT("p.VisualizeMovement 1") : TEXT("p.VisualizeMovement 0"));
+					PC->ConsoleCommand(Subsystem->bVisualizeMovement ? TEXT("p.VisualizeMovement 1") : TEXT("p.VisualizeMovement 0"));
 				}
 				AddTooltip("Visualize paths, target velocity, and floor collision checks (Console command: 'p.VisualizeMovement')");
 
@@ -114,45 +111,45 @@ namespace ImGuiCharacterPropertiesWidget
 				ImGui::Spacing();
 
 				// Trajectory
-				if (ImGui::Checkbox("Draw Trajectory History", &bDebugTrajectory))
+				if (ImGui::Checkbox("Draw Trajectory History", &Subsystem->bDebugTrajectory))
 				{
-					PC->ConsoleCommand(bDebugTrajectory ? TEXT("a.AnimNode.PoseHistory.DebugDrawTrajectory 1") : TEXT("a.AnimNode.PoseHistory.DebugDrawTrajectory 0"));
+					PC->ConsoleCommand(Subsystem->bDebugTrajectory ? TEXT("a.AnimNode.PoseHistory.DebugDrawTrajectory 1") : TEXT("a.AnimNode.PoseHistory.DebugDrawTrajectory 0"));
 				}
 				AddTooltip("Draw past and predicted future character trajectory (Console command: 'a.AnimNode.PoseHistory.DebugDrawTrajectory')");
 
 				ImGui::Spacing();
 
 				// Motion Matching Query
-				if (ImGui::Checkbox("Draw Motion Matching Query", &bDebugMMQuery))
+				if (ImGui::Checkbox("Draw Motion Matching Query", &Subsystem->bDebugMMQuery))
 				{
-					PC->ConsoleCommand(bDebugMMQuery ? TEXT("a.AnimNode.MotionMatching.DebugDrawQuery 1") : TEXT("a.AnimNode.MotionMatching.DebugDrawQuery 0"));
+					PC->ConsoleCommand(Subsystem->bDebugMMQuery ? TEXT("a.AnimNode.MotionMatching.DebugDrawQuery 1") : TEXT("a.AnimNode.MotionMatching.DebugDrawQuery 0"));
 				}
 				AddTooltip("Draw query vectors against the motion matching database (Console command: 'a.AnimNode.MotionMatching.DebugDrawQuery')");
 
 				ImGui::Spacing();
 
 				// Root Offset
-				if (ImGui::Checkbox("Debug Root Bone Offset", &bDebugRootOffset))
+				if (ImGui::Checkbox("Debug Root Bone Offset", &Subsystem->bDebugRootOffset))
 				{
-					PC->ConsoleCommand(bDebugRootOffset ? TEXT("a.AnimNode.OffsetRootBone.Debug 1") : TEXT("a.AnimNode.OffsetRootBone.Debug 0"));
+					PC->ConsoleCommand(Subsystem->bDebugRootOffset ? TEXT("a.AnimNode.OffsetRootBone.Debug 1") : TEXT("a.AnimNode.OffsetRootBone.Debug 0"));
 				}
 				AddTooltip("Draw root bone offset telemetry (Console command: 'a.AnimNode.OffsetRootBone.Debug')");
 
 				ImGui::Spacing();
 
 				// Orientation Warping
-				if (ImGui::Checkbox("Debug Orientation Warping", &bDebugOrientationWarping))
+				if (ImGui::Checkbox("Debug Orientation Warping", &Subsystem->bDebugOrientationWarping))
 				{
-					PC->ConsoleCommand(bDebugOrientationWarping ? TEXT("a.AnimNode.OrientationWarping.Debug 1") : TEXT("a.AnimNode.OrientationWarping.Debug 0"));
+					PC->ConsoleCommand(Subsystem->bDebugOrientationWarping ? TEXT("a.AnimNode.OrientationWarping.Debug 1") : TEXT("a.AnimNode.OrientationWarping.Debug 0"));
 				}
 				AddTooltip("Draw orientation warping angle correction values (Console command: 'a.AnimNode.OrientationWarping.Debug')");
 
 				ImGui::Spacing();
 
 				// Foot Placement
-				if (ImGui::Checkbox("Debug Foot Placement IK", &bDebugFootPlacement))
+				if (ImGui::Checkbox("Debug Foot Placement IK", &Subsystem->bDebugFootPlacement))
 				{
-					PC->ConsoleCommand(bDebugFootPlacement ? TEXT("a.AnimNode.FootPlacement.Debug 1") : TEXT("a.AnimNode.FootPlacement.Debug 0"));
+					PC->ConsoleCommand(Subsystem->bDebugFootPlacement ? TEXT("a.AnimNode.FootPlacement.Debug 1") : TEXT("a.AnimNode.FootPlacement.Debug 0"));
 				}
 				AddTooltip("Draw foot placement IK trace lines and target offsets (Console command: 'a.AnimNode.FootPlacement.Debug')");
 
@@ -171,7 +168,7 @@ namespace ImGuiCharacterPropertiesWidget
 				ImGui::Separator();
 				ImGui::Spacing();
 
-				bool bIsVisible = ControllerWidgetInstance.IsValid() && ControllerWidgetInstance->IsInViewport();
+				bool bIsVisible = Subsystem->ControllerWidgetInstance.IsValid() && Subsystem->ControllerWidgetInstance->IsInViewport();
 
 				ImGui::Text("Overlay Status: ");
 				ImGui::SameLine();
@@ -192,8 +189,8 @@ namespace ImGuiCharacterPropertiesWidget
 					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
 					if (ImGui::Button("Hide Controller Overlay", ImVec2(-FLT_MIN, 35.0f)))
 					{
-						ControllerWidgetInstance->RemoveFromParent();
-						ControllerWidgetInstance = nullptr;
+						Subsystem->ControllerWidgetInstance->RemoveFromParent();
+						Subsystem->ControllerWidgetInstance = nullptr;
 					}
 					ImGui::PopStyleColor(2);
 				}
@@ -210,7 +207,7 @@ namespace ImGuiCharacterPropertiesWidget
 							if (NewWidget)
 							{
 								NewWidget->AddToViewport();
-								ControllerWidgetInstance = NewWidget;
+								Subsystem->ControllerWidgetInstance = NewWidget;
 							}
 						}
 					}
